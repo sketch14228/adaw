@@ -12,11 +12,6 @@ jobs:
       - name: Скачивание исходников
         uses: actions/checkout@v4
 
-      - name: Установка компилятора MinGW
-        uses: egor-tensin/setup-mingw@v2
-        with:
-          platform: x64
-
       - name: Установка официального Qt5
         uses: jurplel/install-qt-action@v3
         with:
@@ -26,6 +21,9 @@ jobs:
       - name: Сборка проекта (qmake и make)
         shell: bash
         run: |
+          # Используем встроенный в Windows-раннер MinGW из состава MSYS2
+          export PATH="/c/msys64/mingw64/bin:$PATH"
+          
           PRO_FILE=$(find . -name "*.pro" -print -quit)
           if [ -z "$PRO_FILE" ]; then
             echo "Ошибка: Файл .pro не найден!"
@@ -34,7 +32,7 @@ jobs:
           PRO_DIR=$(dirname "$PRO_FILE")
           cd "$PRO_DIR"
           
-          # Теперь qmake доступен глобально
+          # Запускаем сборку
           qmake $(basename "$PRO_FILE")
           mingw32-make -j$(nproc)
 
