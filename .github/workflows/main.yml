@@ -25,10 +25,9 @@ jobs:
             mingw-w64-x86_64-libssh
             mingw-w64-x86_64-curl
 
-      - name: Сборка проекта (qmake и make)
+      - name: Сборка проекта (qmake-qt5 и make)
         shell: msys2 {0}
         run: |
-          # Внутри MSYS2 qmake и make доступны сразу
           PRO_FILE=$(find . -name "*.pro" -print -quit)
           if [ -z "$PRO_FILE" ]; then
             echo "Ошибка: Файл .pro не найден!"
@@ -37,17 +36,19 @@ jobs:
           PRO_DIR=$(dirname "$PRO_FILE")
           cd "$PRO_DIR"
           
-          qmake $(basename "$PRO_FILE")
+          # В MSYS2 утилита называется qmake-qt5
+          qmake-qt5 $(basename "$PRO_FILE")
           mingw32-make -j$(nproc)
 
-      - name: Сборка зависимостей (windeployqt)
+      - name: Сборка зависимостей (windeployqt-qt5)
         shell: msys2 {0}
         run: |
           EXE_FILE=$(find . -name "*.exe" -print -quit)
           if [ -n "$EXE_FILE" ]; then
-            windeployqt "$EXE_FILE" --no-compiler-runtime
+            # В MSYS2 утилита называется windeployqt-qt5
+            windeployqt-qt5 "$EXE_FILE" --no-compiler-runtime
             
-            # Дополнительно копируем DLL библиотек libssh и curl, чтобы exe запускался на любом ПК
+            # Копируем DLL библиотек libssh и curl, чтобы exe запускался на любом ПК
             cp /mingw64/bin/libssh.dll $(dirname "$EXE_FILE") 2>/dev/null || true
             cp /mingw64/bin/libcurl*.dll $(dirname "$EXE_FILE") 2>/dev/null || true
             cp /mingw64/bin/libcrypto*.dll $(dirname "$EXE_FILE") 2>/dev/null || true
