@@ -25,15 +25,13 @@ jobs:
             mingw-w64-x86_64-libssh
             mingw-w64-x86_64-curl
 
-      - name: Исправление ошибок кода (добавление cmath)
+      - name: Авто-исправление заголовочных файлов в коде (cmath)
         shell: msys2 {0}
         run: |
-          # Находим файл с ошибкой и добавляем cmath в самое начало
-          TARGET_FILE=$(find . -name "DrawerTh_ME2Scanner.cpp" -print -quit)
-          if [ -n "$TARGET_FILE" ]; then
-            echo "Исправляем файл: $TARGET_FILE"
-            echo -e "#include <cmath>\n$(cat $TARGET_FILE)" > "$TARGET_FILE"
-          fi
+          # Внедряем cmath во ВСЕ файлы .cpp, чтобы функции log() и pow() работали везде
+          for f in $(find . -name "*.cpp"); do
+            echo -e "#include <cmath>\n$(cat $f)" > "$f"
+          done
 
       - name: Сборка проекта (qmake-qt5 и make)
         shell: msys2 {0}
@@ -56,7 +54,7 @@ jobs:
           if [ -n "$EXE_FILE" ]; then
             windeployqt-qt5 "$EXE_FILE" --no-compiler-runtime
             
-            # Копируем DLL библиотек libssh, curl и зависимости, чтобы exe запускался на любом ПК
+            # Копируем системные DLL библиотек libssh, curl и openssl, чтобы exe работал на любом ПК
             cp /mingw64/bin/libssh.dll $(dirname "$EXE_FILE") 2>/dev/null || true
             cp /mingw64/bin/libcurl*.dll $(dirname "$EXE_FILE") 2>/dev/null || true
             cp /mingw64/bin/libcrypto*.dll $(dirname "$EXE_FILE") 2>/dev/null || true
