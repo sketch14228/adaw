@@ -12,28 +12,29 @@ jobs:
       - name: Скачивание исходников
         uses: actions/checkout@v4
 
-      - name: Установка старого совместимого компилятора (MinGW GCC 9)
-        uses: egor-tensin/setup-mingw@v2
+      - name: Установка Qt5, SSH и CURL через MSYS2
+        uses: msys2/setup-msys2@v2
         with:
-          platform: x64
-          version: 9.3.0
-
-      - name: Установка официального Qt5
-        uses: jurplel/install-qt-action@v3
-        with:
-          version: '5.15.2'
-          arch: 'win64_mingw81'
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-make
+            mingw-w64-x86_64-qt5-base
+            mingw-w64-x86_64-qt5-multimedia
+            mingw-w64-x86_64-libssh
+            mingw-w64-x86_64-curl
 
       - name: Авто-исправление заголовочных файлов в коде (cmath)
-        shell: bash
+        shell: msys2 {0}
         run: |
-          # Внедряем cmath во все файлы .cpp, чтобы убрать ошибки математических функций
+          # Внедряем cmath во все файлы .cpp, чтобы функции log() и pow() работали везде
           for f in $(find . -name "*.cpp"); do
             echo -e "#include <cmath>\n$(cat $f)" > "$f"
           done
 
-      - name: Сборка проекта (qmake и make)
-        shell: bash
+      - name: Сборка проекта (qmake-qt5 с флагами совместимости)
+        shell: msys2 {0}
         run: |
           PRO_FILE=$(find . -name "*.pro" -print -quit)
           if [ -z "$PRO_FILE" ]; then
@@ -43,16 +44,22 @@ jobs:
           PRO_DIR=$(dirname "$PRO_FILE")
           cd "$PRO_DIR"
           
-          # Запуск сборки на совместимом компиляторе
-          qmake $(basename "$PRO_FILE")
+          # Запускаем qmake и принудительно заставляем компилятор быть снисходительным к старому коду
+          qmake-qt5 $(basename "$PRO_FILE") QMAKE_CXXFLAGS+="-fpermissive -Wno-error" QMAKE_CFLAGS+="-fpermissive -Wno-error"
           mingw32-make -j$(nproc)
 
-      - name: Сборка зависимостей (windeployqt)
-        shell: bash
+      - name: Сборка зависимостей (windeployqt-qt5)
+        shell: msys2 {0}
         run: |
           EXE_FILE=$(find . -name "*.exe" -print -quit)
           if [ -n "$EXE_FILE" ]; then
-            windeployqt "$EXE_FILE" --no-compiler-runtime
+            windeployqt-qt5 "$EXE_FILE" --no-compiler-runtime
+            
+            # Копируем DLL библиотек libssh, curl и openssl, чтобы exe запускался на любом ПК
+            cp /mingw64/bin/libssh.dll $(dirname "$EXE_FILE") 2>/dev/null || true
+            cp /mingw64/bin/libcurl*.dll $(dirname "$EXE_FILE") 2>/dev/null || true
+            cp /mingw64/bin/libcrypto*.dll $(dirname "$EXE_FILE") 2>/dev/null || true
+            cp /mingw64/bin/libssl*.dll $(dirname "$EXE_FILE") 2>/dev/null || true
           fi
 
       - name: Сохранение готовой программы для Windows
