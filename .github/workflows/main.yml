@@ -12,18 +12,23 @@ jobs:
       - name: Скачивание исходников
         uses: actions/checkout@v4
 
-      - name: Установка официального Qt5
-        uses: jurplel/install-qt-action@v3
+      - name: Установка Qt5, SSH и CURL через MSYS2
+        uses: msys2/setup-msys2@v2
         with:
-          version: '5.15.2'
-          arch: 'win64_mingw81'
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-make
+            mingw-w64-x86_64-qt5-base
+            mingw-w64-x86_64-qt5-multimedia
+            mingw-w64-x86_64-libssh
+            mingw-w64-x86_64-curl
 
       - name: Сборка проекта (qmake и make)
-        shell: bash
+        shell: msys2 {0}
         run: |
-          # Используем встроенный в Windows-раннер MinGW из состава MSYS2
-          export PATH="/c/msys64/mingw64/bin:$PATH"
-          
+          # Внутри MSYS2 qmake и make доступны сразу
           PRO_FILE=$(find . -name "*.pro" -print -quit)
           if [ -z "$PRO_FILE" ]; then
             echo "Ошибка: Файл .pro не найден!"
@@ -32,16 +37,21 @@ jobs:
           PRO_DIR=$(dirname "$PRO_FILE")
           cd "$PRO_DIR"
           
-          # Запускаем сборку
           qmake $(basename "$PRO_FILE")
           mingw32-make -j$(nproc)
 
       - name: Сборка зависимостей (windeployqt)
-        shell: bash
+        shell: msys2 {0}
         run: |
           EXE_FILE=$(find . -name "*.exe" -print -quit)
           if [ -n "$EXE_FILE" ]; then
             windeployqt "$EXE_FILE" --no-compiler-runtime
+            
+            # Дополнительно копируем DLL библиотек libssh и curl, чтобы exe запускался на любом ПК
+            cp /mingw64/bin/libssh.dll $(dirname "$EXE_FILE") 2>/dev/null || true
+            cp /mingw64/bin/libcurl*.dll $(dirname "$EXE_FILE") 2>/dev/null || true
+            cp /mingw64/bin/libcrypto*.dll $(dirname "$EXE_FILE") 2>/dev/null || true
+            cp /mingw64/bin/libssl*.dll $(dirname "$EXE_FILE") 2>/dev/null || true
           fi
 
       - name: Сохранение готовой программы для Windows
