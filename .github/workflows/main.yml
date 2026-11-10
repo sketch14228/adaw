@@ -12,10 +12,10 @@ jobs:
       - name: Скачивание исходников
         uses: actions/checkout@v4
 
-      - name: Установка зависимостей Qt5 и SSH
+      - name: Установка зависимостей (Qt5, SSH, CURL)
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential qt5-qmake qtbase5-dev qtmultimedia5-dev libqt5multimediawidgets5 libqt5multimediawidgets5 libqt5multimedia5-plugins libqt5multimedia5 libssh-dev
+          sudo apt-get install -y build-essential qt5-qmake qtbase5-dev qtmultimedia5-dev libqt5multimediawidgets5 libqt5multimedia5-plugins libqt5multimedia5 libssh-dev libcurl4-openssl-dev libssl-dev
 
       - name: Сборка проекта (умный поиск .pro)
         run: |
@@ -33,21 +33,14 @@ jobs:
           PRO_DIR=$(dirname "$PRO_FILE")
           cd "$PRO_DIR"
           
-          # Запускаем сборку конкретного файла
+          # Запускаем сборку
           qmake $(basename "$PRO_FILE")
           make -j$(nproc)
 
       - name: Сохранение готовой программы
         uses: actions/upload-artifact@v4
         with:
-          name: compiled-ca
+          name: compiled-nesca
           path: |
-            **/ca
-            **/*.exe
-            **/*app*
-            !**/*.cpp
-            !**/*.h
-            !**/*.o
-            !**/*.pro
-            !**/*.ui
-            !**/Makefile
+            **/nesca
+            nesca
