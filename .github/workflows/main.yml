@@ -1,4 +1,4 @@
-name: Build Qt5 App
+name: Build Qt5 Windows App
 
 on:
   workflow_dispatch:
@@ -6,41 +6,53 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: windows-latest
 
     steps:
       - name: Скачивание исходников
         uses: actions/checkout@v4
 
-      - name: Установка зависимостей (Qt5, SSH, CURL)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential qt5-qmake qtbase5-dev qtmultimedia5-dev libqt5multimediawidgets5 libqt5multimedia5-plugins libqt5multimedia5 libssh-dev libcurl4-openssl-dev libssl-dev
+      - name: Установка Qt5 и зависимостей через MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-make
+            mingw-w64-x86_64-qt5-base
+            mingw-w64-x86_64-qt5-multimedia
+            mingw-w64-x86_64-libssh
+            mingw-w64-x86_64-curl
 
-      - name: Сборка проекта (умный поиск .pro)
+      - name: Сборка проекта (qmake и make)
+        shell: msys2 {0}
         run: |
-          # Ищем файл .pro в репозитории
           PRO_FILE=$(find . -name "*.pro" -print -quit)
-          
           if [ -z "$PRO_FILE" ]; then
-            echo "Ошибка: Файл проекта .pro не найден в репозитории!"
+            echo "Ошибка: Файл .pro не найден!"
             exit 1
           fi
-          
-          echo "Найден файл проекта: $PRO_FILE"
-          
-          # Переходим в папку, где лежит этот файл, если он не в корне
           PRO_DIR=$(dirname "$PRO_FILE")
           cd "$PRO_DIR"
           
-          # Запускаем сборку
           qmake $(basename "$PRO_FILE")
-          make -j$(nproc)
+          mingw32-make -j$(nproc)
 
-      - name: Сохранение готовой программы
+      - name: Сборка зависимостей (windeployqt)
+        shell: msys2 {0}
+        run: |
+          EXE_FILE=$(find . -name "*.exe" -print -quit)
+          if [ -n "$EXE_FILE" ]; then
+            windeployqt "$EXE_FILE" --no-compiler-runtime
+          fi
+
+      - name: Сохранение готовой программы для Windows
         uses: actions/upload-artifact@v4
         with:
-          name: compiled-nesca
+          name: compiled-nesca-windows
           path: |
-            **/nesca
-            nesca
+            **/*.exe
+            **/*.dll
+            **/plugins/
