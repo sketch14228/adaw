@@ -29,6 +29,9 @@ jobs:
       - name: Сборка проекта (qmake и make)
         shell: msys2 {0}
         run: |
+          # Добавляем путь к бинарникам Qt5 в MSYS2
+          export PATH="/mingw64/share/qt5/bin:/mingw64/bin:$PATH"
+          
           PRO_FILE=$(find . -name "*.pro" -print -quit)
           if [ -z "$PRO_FILE" ]; then
             echo "Ошибка: Файл .pro не найден!"
@@ -43,6 +46,8 @@ jobs:
       - name: Сборка зависимостей (windeployqt)
         shell: msys2 {0}
         run: |
+          export PATH="/mingw64/share/qt5/bin:/mingw64/bin:$PATH"
+          
           EXE_FILE=$(find . -name "*.exe" -print -quit)
           if [ -n "$EXE_FILE" ]; then
             windeployqt "$EXE_FILE" --no-compiler-runtime
