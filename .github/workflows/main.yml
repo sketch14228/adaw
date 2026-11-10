@@ -15,11 +15,26 @@ jobs:
       - name: Установка зависимостей Qt5 и SSH
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential qt5-qmake qtbase5-dev qtmultimedia5-dev libqt5multimediawidgets5 libqt5multimedia5-plugins libqt5multimedia5 libssh-dev
+          sudo apt-get install -y build-essential qt5-qmake qtbase5-dev qtmultimedia5-dev libqt5multimediawidgets5 libqt5multimediawidgets5 libqt5multimedia5-plugins libqt5multimedia5 libssh-dev
 
-      - name: Сборка проекта (qmake и make)
+      - name: Сборка проекта (умный поиск .pro)
         run: |
-          qmake
+          # Ищем файл .pro в репозитории
+          PRO_FILE=$(find . -name "*.pro" -print -quit)
+          
+          if [ -z "$PRO_FILE" ]; then
+            echo "Ошибка: Файл проекта .pro не найден в репозитории!"
+            exit 1
+          fi
+          
+          echo "Найден файл проекта: $PRO_FILE"
+          
+          # Переходим в папку, где лежит этот файл, если он не в корне
+          PRO_DIR=$(dirname "$PRO_FILE")
+          cd "$PRO_DIR"
+          
+          # Запускаем сборку конкретного файла
+          qmake $(basename "$PRO_FILE")
           make -j$(nproc)
 
       - name: Сохранение готовой программы
@@ -27,15 +42,12 @@ jobs:
         with:
           name: compiled-ca
           path: |
-            *
-            !*.cpp
-            !*.h
-            !*.o
-            !*.pro
-            !*.ui
-            !*.qrc
-            !Makefile
-            !Dockerfile
-            !README*
-            !.git*
-            !.github*
+            **/ca
+            **/*.exe
+            **/*app*
+            !**/*.cpp
+            !**/*.h
+            !**/*.o
+            !**/*.pro
+            !**/*.ui
+            !**/Makefile
