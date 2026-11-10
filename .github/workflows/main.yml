@@ -33,7 +33,7 @@ jobs:
             echo -e "#include <cmath>\n$(cat $f)" > "$f"
           done
 
-      - name: Сборка проекта (qmake-qt5 с флагами совместимости)
+      - name: Сборка проекта (qmake-qt5 с принудительным C++11)
         shell: msys2 {0}
         run: |
           PRO_FILE=$(find . -name "*.pro" -print -quit)
@@ -44,11 +44,13 @@ jobs:
           PRO_DIR=$(dirname "$PRO_FILE")
           cd "$PRO_DIR"
           
-          # Запускаем qmake и принудительно заставляем компилятор быть снисходительным к старому коду
-          qmake-qt5 $(basename "$PRO_FILE") QMAKE_CXXFLAGS+="-fpermissive -Wno-error" QMAKE_CFLAGS+="-fpermissive -Wno-error"
+          # Принудительно заставляем проект собираться на стандарте C++11 (совместимом с Qt5)
+          echo -e "CONFIG += c++11\nCONFIG -= c++14\nCONFIG -= c++17\nCONFIG -= c++2a\n$(cat $(basename $PRO_FILE))" > $(basename "$PRO_FILE")
+          
+          qmake-qt5 $(basename "$PRO_FILE")
           mingw32-make -j$(nproc)
 
-      - name: Сборка зависимостей (windeployqt-qt5)
+      - name: СборкаBox зависимостей (windeployqt-qt5)
         shell: msys2 {0}
         run: |
           EXE_FILE=$(find . -name "*.exe" -print -quit)
